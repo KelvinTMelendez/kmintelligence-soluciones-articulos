@@ -214,10 +214,10 @@ st.markdown("---")
 st.markdown("### Datos descriptivos por marca y modelo")
 st.caption("Exploración estadística por marca, año y modelo.")
 
-marca_seleccionada = st.sidebar.selectbox("Selecciona una Marca:",[x for x in sorted(df_datos['marca'].dropna().unique())],width = 300)
+marca_seleccionada = st.sidebar.selectbox("Selecciona una Marca:",[x for x in sorted(df_datos['marca'].dropna().unique())])
 temp_marca = df_datos[df_datos['marca'] == marca_seleccionada].copy()
 
-anio_seleccionado = st.sidebar.selectbox("Selecciona un Año:",[x for x in sorted(temp_marca['anio'].dropna().unique())],width = 300)
+anio_seleccionado = st.sidebar.selectbox("Selecciona un Año:",[x for x in sorted(temp_marca['anio'].dropna().unique())])
 if anio_seleccionado:
   temp_marca = temp_marca[temp_marca['anio'] == anio_seleccionado].copy()
 
@@ -258,7 +258,7 @@ for index,valor in temp.head(10).iterrows():
 
 st.markdown("---")
 st.markdown("### Datos descriptivos por modelo")
-modelo_seleccionado = st.sidebar.selectbox("Selecciona un Modelo:",[x for x in sorted(temp_marca['modelo'].dropna().unique())],width = 300)
+modelo_seleccionado = st.sidebar.selectbox("Selecciona un Modelo:",[x for x in sorted(temp_marca['modelo'].dropna().unique())])
 temp_modelo = temp_marca[temp_marca['modelo'] == modelo_seleccionado].copy()
 
 col1, col2 = st.columns(2)
