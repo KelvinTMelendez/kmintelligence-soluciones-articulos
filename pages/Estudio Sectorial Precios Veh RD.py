@@ -18,7 +18,7 @@ load_dotenv()
 # -------------------------------- Configuraciones Globales ------------------------------
 # ----------------------------------------------------------------------------------------
 #layout
-st.set_page_config(page_title="Estudio Sectorial Vehículos RD", layout="wide")
+st.set_page_config(page_title="Estudio Sectorial Vehículos RD", layout="wide",initial_sidebar_state="expanded")
 
 #conextion db
 usuario_db = os.getenv("USUARIO_DB")
