@@ -197,9 +197,14 @@ st.dataframe(formato_tabla(df1, ['Cantidad']), use_container_width=True)
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔍 Filtros de Exploración Global")
 
-# Filtro Marca (Requerido)
-marca_seleccionada = st.sidebar.selectbox("Selecciona una Marca:", sorted(df_datos['Marca'].dropna().unique()))
-df_filtrado = df_datos[df_datos['Marca'] == marca_seleccionada].copy()
+# Filtro Marca (Con opción "Todas")
+marcas_disponibles = ["Todas"] + sorted([str(m) for m in df_datos['Marca'].dropna().unique()])
+marca_seleccionada = st.sidebar.selectbox("Selecciona una Marca:", marcas_disponibles)
+
+if marca_seleccionada != "Todas":
+    df_filtrado = df_datos[df_datos['Marca'] == marca_seleccionada].copy()
+else:
+    df_filtrado = df_datos.copy()
 
 # Filtro Modelo (Opcional - con "Todos")
 modelos_disponibles = ["Todos"] + sorted([str(x) for x in df_filtrado['Modelo'].dropna().unique()])
@@ -226,6 +231,8 @@ filtro_str = f"Marca: {marca_seleccionada} | Modelo: {modelo_seleccionado} | Ver
 # Variables globales para recopilar los insights para el resumen
 resumen_oferta_precio = ""
 resumen_geo = ""
+top_rural = pd.DataFrame()
+top_metro = pd.DataFrame()
 
 # ----------------------------------------------------------------------------------------
 # ------------------------------- GRÁFICOS Y TABLAS (CON df_filtrado) --------------------
@@ -248,13 +255,15 @@ else:
         df_cantidad_modelo = df_filtrado['Modelo_Anio'].value_counts().reset_index()
         df_cantidad_modelo.columns = ['Modelo_Anio', 'Cantidad']
         df_cantidad_modelo.sort_values(by='Cantidad', ascending=False, inplace=True)
-        col1.bar_chart(df_cantidad_modelo, x='Modelo_Anio', y='Cantidad', use_container_width=True)
+        # Tomamos el top 30 para evitar que el gráfico colapse si seleccionan "Todas"
+        col1.bar_chart(df_cantidad_modelo.head(30), x='Modelo_Anio', y='Cantidad', use_container_width=True)
 
     with col2:
         col2.markdown(f"**Precio promedio por modelo y año (USD)**")
         df_promedio_precio_modelo = df_filtrado.groupby('Modelo_Anio', dropna=False)['Precio USD'].mean().reset_index()
         df_promedio_precio_modelo.columns = ['Modelo_Anio', 'Precio Promedio USD']
-        col2.bar_chart(df_promedio_precio_modelo, x='Modelo_Anio', y='Precio Promedio USD', use_container_width=True)
+        # Tomamos el top 30 para mantener consistencia visual
+        col2.bar_chart(df_promedio_precio_modelo.head(30), x='Modelo_Anio', y='Precio Promedio USD', use_container_width=True)
 
     # Estadísticos
     temp_stats_modelo = df_filtrado.groupby(['Marca', 'Modelo', 'Version', 'Anio'])['Precio USD'].agg(['count', 'mean', 'median', 'min', 'max', 'std']).reset_index()
@@ -270,7 +279,7 @@ else:
         hide_index=True
     )
 
-    # Top 10 Dispersión - FORMATO PROFESIONAL
+    # Top 10 Dispersión
     temp_disp = df_filtrado.groupby(['Marca', 'Modelo', 'Version', 'Anio'])['Precio USD'].std().reset_index()
     temp_disp.columns = ['Marca', 'Modelo', 'Versión', 'Año', 'Desviación Estándar (US$)']
     temp_disp = temp_disp.dropna(subset=['Desviación Estándar (US$)'])
@@ -301,8 +310,6 @@ else:
         col2.markdown(f"**Curva de densidad de precios KDE**")
         precios_filtrados = df_filtrado['Precio USD'].dropna().tolist()
         
-        # MANEJO DE ERROR LINALGERROR (MATRIZ SINGULAR KDE)
-        # Verificamos que haya al menos 2 valores únicos para que exista variabilidad
         if len(precios_filtrados) > 1 and len(set(precios_filtrados)) > 1:
             try:
                 fig = ff.create_distplot(
@@ -337,23 +344,22 @@ else:
         color="Key"
     )
 
-    # Cálculo de la pendiente (oferta vs precio)
+    # Insight local: Cálculo de la pendiente (oferta vs precio) agrupado
     if len(temp_scatter_plot) > 1:
         z = np.polyfit(temp_scatter_plot['Cantidad'], temp_scatter_plot['Precio Promedio'], 1)
         pendiente = z[0]
         
-        # Lógica de interpretación de la pendiente
-        if pendiente > 50: # Tendencia al alza apreciable
-            resumen_oferta_precio = "La cantidad de ofertas no presiona el precio a la baja; al contrario, a mayor cantidad de ofertas observamos precios más altos. Esto da a entender que **hay una demanda latente muy fuerte** (que no estamos midiendo) que absorbe la oferta y empuja los precios hacia arriba, o bien, los modelos de mayor precio son los que tienen mayor rotación en el mercado."
+        if pendiente > 50: 
+            resumen_oferta_precio = "La cantidad de ofertas no presiona el precio a la baja; al contrario, combinaciones con mayor volumen tienden a mostrar precios más altos. Esto indica una **demanda latente muy fuerte** que absorbe la oferta y eleva el mercado, o que los modelos más costosos son los de mayor rotación."
             st.success(f"📈 **Insight de Mercado:** Para los vehículos bajo los filtros actuales ({filtro_str}), {resumen_oferta_precio}")
-        elif pendiente < -50: # Tendencia a la baja apreciable
-            resumen_oferta_precio = "Una mayor cantidad de ofertas publicadas presiona el precio a la baja. Este es el **comportamiento esperado cuando abunda la oferta** y los vendedores deben competir por precio."
+        elif pendiente < -50: 
+            resumen_oferta_precio = "Una mayor cantidad de ofertas publicadas presiona el precio promedio a la baja. Este es el **comportamiento natural de competencia** donde la abundancia de oferta obliga a los vendedores a ajustar sus precios."
             st.info(f"📉 **Insight de Mercado:** Para los vehículos bajo los filtros actuales ({filtro_str}), {resumen_oferta_precio}")
-        else: # Pendiente casi plana
-            resumen_oferta_precio = "La oferta publicada no muestra una correlación fuerte con el precio promedio. Esto sugiere que **la cantidad de vehículos no influye fuertemente en su precio**, sino que otros factores (como el estado del vehículo, kilometraje o equipamiento) podrían estar dictando el precio final."
+        else: 
+            resumen_oferta_precio = "La oferta publicada no muestra una correlación fuerte con el precio promedio. Esto sugiere que **el volumen no es el factor que dicta el precio**, sino variables intrínsecas (estado, uso, equipamiento)."
             st.info(f"⚖️ **Insight de Mercado:** Para los vehículos bajo los filtros actuales ({filtro_str}), {resumen_oferta_precio}")
     else:
-        resumen_oferta_precio = "No hay suficientes puntos de datos en esta selección para determinar una tendencia clara entre cantidad y precio."
+        resumen_oferta_precio = "No hay suficientes agrupaciones en esta selección para determinar una tendencia matemática clara entre cantidad y precio."
         st.write("💡 **Insight de Mercado:**", resumen_oferta_precio)
 
 
@@ -402,95 +408,91 @@ else:
             hide_index=True
         )
 
-        datos_stat_zona = df_filtrado[['Provincia', 'Precio USD']].copy()
-        datos_stat_zona['Provincia'] = np.where(
-            datos_stat_zona['Provincia'].isin(['Distrito Nacional', 'Santo Domingo']),
-            'Metropolitana',
-            'Rural'
-        )
-        datos_stat_zona = datos_stat_zona.groupby('Provincia').agg(['mean', 'count']).reset_index()
-        datos_stat_zona.columns = ['Zona', 'Precio US$ Promedio', 'Cantidad Veh en venta']
-        
-        st.markdown("**Comparación agregada entre zona Metropolitana y Rural**")
-        st.dataframe(
-            formato_tabla(datos_stat_zona, ['Precio US$ Promedio', 'Cantidad Veh en venta']),
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Insight de Porcentaje de Incremento Geográfico
-        zonas_dict = datos_stat_zona.set_index('Zona').to_dict('index')
-        if 'Metropolitana' in zonas_dict and 'Rural' in zonas_dict:
-            precio_metro = zonas_dict['Metropolitana']['Precio US$ Promedio']
-            cant_metro = zonas_dict['Metropolitana']['Cantidad Veh en venta']
-            precio_rural = zonas_dict['Rural']['Precio US$ Promedio']
-            cant_rural = zonas_dict['Rural']['Cantidad Veh en venta']
-            
-            if precio_rural > 0:
-                variacion = ((precio_metro - precio_rural) / precio_rural) * 100
-                if variacion > 0:
-                    resumen_geo = f"La zona **Metropolitana** (con una muestra de {cant_metro:,.0f} vehículos) presenta un precio promedio un **{variacion:.1f}% más alto** que la zona **Rural** (que tiene {cant_rural:,.0f} vehículos en venta)."
-                    st.success(f"📍 **Insight Geográfico:** {resumen_geo}")
-                else:
-                    resumen_geo = f"Sorprendentemente, la zona **Rural** (con una muestra de {cant_rural:,.0f} vehículos) presenta un precio promedio un **{abs(variacion):.1f}% más alto** que la zona **Metropolitana** (con {cant_metro:,.0f} vehículos en venta)."
-                    st.info(f"📍 **Insight Geográfico:** {resumen_geo}")
-        else:
-            resumen_geo = "No hay datos suficientes en ambas zonas (Metropolitana y Rural) para calcular una variación de precios."
+    # Insight y Cálculo Geográfico (Basado en el cruce de Marca/Modelo/Versión/Año para evitar sesgos)
+    df_geo_conclusiones = df_filtrado.copy()
+    df_geo_conclusiones['Zona'] = np.where(df_geo_conclusiones['Provincia'].isin(['Distrito Nacional', 'Santo Domingo']), 'Metropolitana', 'Rural')
+    
+    # Tabla resumen por zona
+    st.markdown("**Comparación agregada entre zona Metropolitana y Rural**")
+    datos_stat_zona = df_geo_conclusiones.groupby('Zona').agg(
+        Precio_Promedio=('Precio USD', 'mean'),
+        Cantidad=('Precio USD', 'count')
+    ).reset_index()
+    datos_stat_zona.columns = ['Zona', 'Precio US$ Promedio', 'Cantidad Veh en venta']
+    st.dataframe(
+        formato_tabla(datos_stat_zona, ['Precio US$ Promedio', 'Cantidad Veh en venta']),
+        use_container_width=True,
+        hide_index=True
+    )
 
-    # Top mejores ofertas Rurales / Metropolitanas (FORMATO PROFESIONAL)
+    # Cálculo preciso controlando por vehículo (Marca, Modelo, Versión, Año)
+    geo_agg = df_geo_conclusiones.groupby(['Marca', 'Modelo', 'Version', 'Anio', 'Zona'])['Precio USD'].mean().reset_index()
+    geo_pivot = geo_agg.pivot_table(index=['Marca', 'Modelo', 'Version', 'Anio'], columns='Zona', values='Precio USD').reset_index()
+    
+    if 'Metropolitana' in geo_pivot.columns and 'Rural' in geo_pivot.columns:
+        promedio_metro_real = geo_pivot['Metropolitana'].mean()
+        promedio_rural_real = geo_pivot['Rural'].mean()
+        
+        if pd.notna(promedio_metro_real) and pd.notna(promedio_rural_real) and promedio_rural_real > 0:
+            variacion = ((promedio_metro_real - promedio_rural_real) / promedio_rural_real) * 100
+            if variacion > 0:
+                resumen_geo = f"Comparando estrictamente vehículos equivalentes (misma marca, modelo, versión y año), la zona **Metropolitana** es en promedio un **{variacion:.1f}% más cara** que la zona Rural."
+                st.success(f"📍 **Insight Geográfico:** {resumen_geo}")
+            elif variacion < 0:
+                resumen_geo = f"Comparando estrictamente vehículos equivalentes, sorprendentemente la zona **Rural** es en promedio un **{abs(variacion):.1f}% más cara** que la zona Metropolitana."
+                st.info(f"📍 **Insight Geográfico:** {resumen_geo}")
+            else:
+                resumen_geo = "No se observan diferencias significativas de precio entre las zonas Metropolitana y Rural para vehículos equivalentes."
+                st.write(f"📍 **Insight Geográfico:** {resumen_geo}")
+        else:
+            resumen_geo = "No existen suficientes coincidencias de vehículos exactos en ambas zonas para trazar una media comparativa."
+            st.write(f"📍 **Insight Geográfico:** {resumen_geo}")
+    else:
+        resumen_geo = "No existen ofertas en ambas zonas (Metropolitana y Rural) para realizar la comparativa bajo los filtros actuales."
+        st.write(f"📍 **Insight Geográfico:** {resumen_geo}")
+
+    # Top mejores ofertas Rurales / Metropolitanas (En la sección de Geografía)
     st.markdown("---")
     st.markdown("### 🗺️ Oportunidades por distribución geográfica")
     
-    datos_stat_provincia_agg = df_filtrado.groupby(['Marca', 'Modelo', 'Version', 'Anio', 'Provincia'])['Precio USD'].mean().reset_index()
-    datos_stat_provincia_agg.columns = ['Marca', 'Modelo', 'Versión', 'Año', 'Provincia', 'Precio Promedio']
-    datos_stat_provincia_agg['Provincia'] = np.where(
-        datos_stat_provincia_agg['Provincia'].isin(['Distrito Nacional', 'Santo Domingo']),
-        'Metropolitana',
-        'Rural'
-    )
-    datos_stat_provincia_pivot = datos_stat_provincia_agg.pivot_table(index=['Marca', 'Modelo', 'Versión', 'Año'], columns='Provincia', values='Precio Promedio').reset_index()
-
-    if 'Metropolitana' in datos_stat_provincia_pivot.columns and 'Rural' in datos_stat_provincia_pivot.columns:
-        
+    if 'Metropolitana' in geo_pivot.columns and 'Rural' in geo_pivot.columns:
         col_r, col_m = st.columns(2)
 
         # Oportunidades Rurales
-        top_rural = datos_stat_provincia_pivot.copy()
+        top_rural = geo_pivot.copy()
         top_rural['Indicador'] = (top_rural['Metropolitana'] - top_rural['Rural']) / top_rural['Rural']
         top_rural.sort_values(by='Indicador', ascending=False, inplace=True)
         top_rural = top_rural[(top_rural['Indicador'] > 0) & (top_rural['Indicador'] <= 0.3)]
 
         with col_r:
-            st.success("🌾 **Mejores oportunidades en provincias Rurales**")
-            st.caption("Vehículos cuyo precio es más económico en zonas rurales (hasta un 30% más baratos vs. la metrópolis).")
+            st.success("🌾 **Mejores ofertas en zona Rural (vs. Metrópolis)**")
             if not top_rural.empty:
                 st.dataframe(
-                    formato_tabla(top_rural.head(10)[['Marca', 'Modelo', 'Versión', 'Año', 'Rural', 'Metropolitana']], ['Rural', 'Metropolitana']),
+                    formato_tabla(top_rural.head(10)[['Marca', 'Modelo', 'Version', 'Anio', 'Rural', 'Metropolitana']].rename(columns={'Version':'Versión', 'Anio':'Año'}), ['Rural', 'Metropolitana']),
                     use_container_width=True,
                     hide_index=True
                 )
             else:
-                st.write("No se encontraron oportunidades destacables bajo estos filtros.")
+                st.write("No se encontraron oportunidades destacables.")
 
         # Oportunidades Metropolitanas
-        top_metro = datos_stat_provincia_pivot.copy()
+        top_metro = geo_pivot.copy()
         top_metro['Indicador'] = (top_metro['Rural'] - top_metro['Metropolitana']) / top_metro['Metropolitana']
         top_metro.sort_values(by='Indicador', ascending=False, inplace=True)
         top_metro = top_metro[(top_metro['Indicador'] > 0) & (top_metro['Indicador'] <= 0.3)]
 
         with col_m:
-            st.info("🏙️ **Mejores oportunidades en provincias Metropolitanas**")
-            st.caption("Vehículos cuyo precio es más económico en la ciudad (hasta un 30% más baratos vs. el interior).")
+            st.info("🏙️ **Mejores ofertas en zona Metropolitana (vs. Rural)**")
             if not top_metro.empty:
                 st.dataframe(
-                    formato_tabla(top_metro.head(10)[['Marca', 'Modelo', 'Versión', 'Año', 'Metropolitana', 'Rural']], ['Metropolitana', 'Rural']),
+                    formato_tabla(top_metro.head(10)[['Marca', 'Modelo', 'Version', 'Anio', 'Metropolitana', 'Rural']].rename(columns={'Version':'Versión', 'Anio':'Año'}), ['Metropolitana', 'Rural']),
                     use_container_width=True,
                     hide_index=True
                 )
             else:
-                st.write("No se encontraron oportunidades destacables bajo estos filtros.")
+                st.write("No se encontraron oportunidades destacables.")
     else:
-        st.warning("⚠️ No hay suficientes datos para comparar Zona Metropolitana vs. Zona Rural con los filtros actuales.")
+        st.warning("⚠️ No hay datos suficientes para buscar oportunidades cruzadas entre zonas en la selección actual.")
 
 
 # ----------------------------------------------------------------------------------------
@@ -503,15 +505,58 @@ st.markdown("## 📝 Conclusiones Resumen")
 if not df_filtrado.empty:
     st.markdown(f"**Filtros de exploración aplicados:** `{filtro_str}`")
     
+    # 1. Métricas Globales
+    cantidad_total = df_filtrado.shape[0]
+    precio_promedio_total = df_filtrado['Precio USD'].mean()
+    
     col_c1, col_c2 = st.columns(2)
     with col_c1:
-        st.metric(label="Volumen Total Analizado", value=f"{df_filtrado.shape[0]:,.0f} Vehículos")
+        st.metric(label="Cantidad de Vehículos Analizados", value=f"{cantidad_total:,.0f} unidades")
     with col_c2:
-        st.metric(label="Precio Promedio Global (USD)", value=f"US$ {df_filtrado['Precio USD'].mean():,.2f}")
+        st.metric(label="Precio Promedio General", value=f"US$ {precio_promedio_total:,.2f}")
+
+    st.markdown("### 🧠 Insights Clave:")
     
-    st.markdown("### Principales Hallazgos:")
+    # 2. Variabilidad General
+    std_global = df_filtrado['Precio USD'].std()
+    cv_global = std_global / precio_promedio_total if precio_promedio_total > 0 else 0
+    if cv_global > 0.6:
+        var_comment = "Existe una **alta variabilidad** en los precios. Los montos fluctúan significativamente respecto al promedio general, indicando un mercado muy diverso en cuanto a condiciones de los vehículos, equipamiento, kilometraje o la mezcla de distintos sub-modelos."
+    elif cv_global > 0.3:
+        var_comment = "Se observa una **variabilidad moderada**. Hay diferencias razonables de precio justificadas por el estado general del vehículo y año de fabricación dentro de la muestra seleccionada."
+    else:
+        var_comment = "La muestra presenta **baja variabilidad**. Los precios tienden a estar concentrados muy cerca del promedio, sugiriendo un mercado altamente estandarizado para los filtros aplicados."
+    
+    st.markdown(f"- **Variabilidad General de los Precios:** {var_comment}")
+
+    # 3 & 4. Dinámica de Oferta y Comparativa Geográfica (Imprimimos los generados arriba)
     st.markdown(f"- **Dinámica de Oferta y Precio:** {resumen_oferta_precio}")
-    st.markdown(f"- **Diferencia Geográfica:** {resumen_geo if resumen_geo else 'No hubo muestra suficiente en ambas zonas para determinar una diferencia de precios.'}")
+    st.markdown(f"- **Comparativa Geográfica:** {resumen_geo}")
+
+    # 5. Top Oportunidades (Re-impresión para el resumen)
+    st.markdown("### 🗺️ Top Oportunidades Geográficas Resumidas")
+    if 'Metropolitana' in geo_pivot.columns and 'Rural' in geo_pivot.columns:
+        col_r_res, col_m_res = st.columns(2)
+        with col_r_res:
+            st.success("🌾 **Top Rural**")
+            if not top_rural.empty:
+                st.dataframe(
+                    formato_tabla(top_rural.head(5)[['Marca', 'Modelo', 'Versión' if 'Versión' in top_rural.columns else 'Version', 'Año' if 'Año' in top_rural.columns else 'Anio', 'Rural', 'Metropolitana']], ['Rural', 'Metropolitana']),
+                    use_container_width=True, hide_index=True
+                )
+            else:
+                st.write("-")
+        with col_m_res:
+            st.info("🏙️ **Top Metropolitano**")
+            if not top_metro.empty:
+                st.dataframe(
+                    formato_tabla(top_metro.head(5)[['Marca', 'Modelo', 'Versión' if 'Versión' in top_metro.columns else 'Version', 'Año' if 'Año' in top_metro.columns else 'Anio', 'Metropolitana', 'Rural']], ['Metropolitana', 'Rural']),
+                    use_container_width=True, hide_index=True
+                )
+            else:
+                st.write("-")
+    else:
+        st.write("No hay datos para mostrar el top de oportunidades en el resumen.")
 else:
     st.info("No hay datos suficientes para generar conclusiones sobre esta selección.")
 
@@ -536,11 +581,12 @@ sino ubicar la oferta dentro de su distribución histórica usando dos métricas
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    marca_est = st.selectbox("Marca", sorted(df_datos['Marca'].dropna().unique()), key='marca_estadistico')
+    # Este modelo evalúa la base completa independientemente de los filtros globales de arriba
+    marca_est = st.selectbox("Marca", sorted([str(m) for m in df_datos['Marca'].dropna().unique()]), key='marca_estadistico')
 base_marca_est = df_datos[df_datos['Marca'] == marca_est].copy()
 
 with col2:
-    modelo_est = st.selectbox("Modelo", sorted(base_marca_est['Modelo'].dropna().unique()), key='modelo_estadistico')
+    modelo_est = st.selectbox("Modelo", sorted([str(x) for x in base_marca_est['Modelo'].dropna().unique()]), key='modelo_estadistico')
 base_modelo_est = base_marca_est[base_marca_est['Modelo'] == modelo_est].copy()
 
 with col3:
@@ -548,7 +594,7 @@ with col3:
 base_version_est = base_modelo_est[base_modelo_est['Version'] == version_est].copy()
 
 with col4:
-    anio_est = st.selectbox("Año", sorted(base_version_est['Anio'].dropna().unique()), key='anio_estadistico')
+    anio_est = st.selectbox("Año", sorted([int(x) for x in base_version_est['Anio'].dropna().unique()]), key='anio_estadistico')
 
 with col5:
     precio_consulta = st.number_input("Precio a evaluar (US$)", min_value=0.0, step=1000.0, value=20000.0)
