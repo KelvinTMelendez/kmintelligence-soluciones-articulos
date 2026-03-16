@@ -18,6 +18,12 @@ st.sidebar.markdown("""
   - [Automatizado](#automatizado)
   - [Con navegadores](#con-navegadores)
   - [Con API](#con-api)
+- [Usos del web scraping](#usos-del-web-scraping)
+  - [E-commerce y retail](#e-commerce-y-retail)
+  - [Estudios de mercado y marketing](#estudios-de-mercado-y-marketing)
+  - [Turismo y hoteleria](#turismo-y-hoteleria)
+  - [Bienes raices](#bienes-raices)
+  - [Recursos humanos](#recursos-humanos)
 - [Marco legal](#marco-legal-del-web-scraping)
   - [Cómo saber si está prohibido o no](#como-saber-si-esta-prohibido-o-no)
   - [Términos de Servicio](#terminos-de-servicio)
@@ -80,6 +86,36 @@ Algunas librerías utilizadas para el desarrollo de estos _scripts_ son:
 ### Con API
 El enfoque es consumir las API disponibles en la web.
 
+
+## Usos del web scraping
+En terminos simples, el web scraping ayuda a analistas y cientificos de datos a revisar informacion publica de muchas paginas en menos tiempo. En lugar de hacerlo manualmente, se automatiza para tomar decisiones mas rapido.
+
+### E-commerce y retail
+- Comparan precios entre tiendas para saber quien esta mas caro o mas barato.
+- Vigilan promociones de la competencia para ajustar ofertas.
+- Revisan si productos clave estan agotados o disponibles.
+
+### Estudios de mercado y marketing
+- Analizan comentarios y resenas para entender que gusta y que molesta a los clientes.
+- Observan productos, mensajes y ofertas de marcas competidoras.
+- Detectan tendencias (por ejemplo, categorias con mayor interes).
+
+### Turismo y hoteleria
+- Comparan precios de vuelos y hoteles en diferentes portales.
+- Monitorean cambios de tarifas en temporada alta y baja.
+- Revisan disponibilidad para detectar oportunidades comerciales.
+
+### Bienes raices
+- Siguen precios de alquiler y venta por zona.
+- Miden cuanto tiempo duran publicados los inmuebles.
+- Detectan zonas donde sube o baja la demanda.
+
+### Recursos humanos
+- Revisan vacantes para identificar habilidades mas solicitadas.
+- Comparan rangos salariales por rol y ciudad.
+- Entienden que perfiles busca la competencia.
+
+En resumen, el web scraping se usa para convertir datos publicos en informacion util para decisiones de negocio.
 
 ## Marco legal del web scraping
 El web scraping (o raspado web) es una herramienta fundamental para la recolección masiva y automatizada de datos en la era digital. Sin embargo, su legalidad reside en una compleja zona gris, donde la permisibilidad está sujeta a la estricta observancia de los derechos contractuales, de propiedad intelectual y las regulaciones de privacidad. Contrariamente a la creencia popular, la simple accesibilidad pública de un dato no lo exime de protección legal.
