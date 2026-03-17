@@ -228,7 +228,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.dataframe(formato_tabla(df1, ['Cantidad']), width="stretch")
+st.dataframe(formato_tabla(df1, ['Cantidad']), use_container_width=True)
 
 
 # ----------------------------------------------------------------------------------------
@@ -302,14 +302,14 @@ else:
         df_cantidad_modelo.columns = ['Modelo_Anio', 'Cantidad']
         df_cantidad_modelo.sort_values(by='Cantidad', ascending=False, inplace=True)
         # Tomamos el top 30 para evitar que el gráfico colapse si seleccionan "Todas"
-        col1.bar_chart(df_cantidad_modelo.head(30), x='Modelo_Anio', y='Cantidad', width="stretch")
+        col1.bar_chart(df_cantidad_modelo.head(30), x='Modelo_Anio', y='Cantidad', use_container_width=True)
 
     with col2:
         col2.markdown(f"**Precio promedio por modelo y año (USD)**")
         df_promedio_precio_modelo = df_filtrado.groupby('Modelo_Anio', dropna=False)['Precio USD'].mean().reset_index()
         df_promedio_precio_modelo.columns = ['Modelo_Anio', 'Precio Promedio USD']
         # Tomamos el top 30 para mantener consistencia visual
-        col2.bar_chart(df_promedio_precio_modelo.head(30), x='Modelo_Anio', y='Precio Promedio USD', width="stretch")
+        col2.bar_chart(df_promedio_precio_modelo.head(30), x='Modelo_Anio', y='Precio Promedio USD', use_container_width=True)
 
     # Estadísticos
     temp_stats_modelo = df_filtrado.groupby(['Marca', 'Modelo', 'Version', 'Anio'])['Precio USD'].agg(['count', 'mean', 'median', 'min', 'max', 'std']).reset_index()
@@ -321,7 +321,7 @@ else:
         formato_tabla(temp_stats_modelo, [
             'Cantidad Veh', 'Precio Promedio', 'Precio Mediana', 'Precio Mínimo', 'Precio Máximo', 'Desviación Estándar'
         ]),
-        width="stretch",
+        use_container_width=True,
         hide_index=True
     )
 
@@ -337,7 +337,7 @@ else:
         
         st.dataframe(
             formato_tabla(temp_disp.head(10), ['Desviación Estándar (US$)']),
-            width="stretch",
+            use_container_width=True,
             hide_index=True
         )
 
@@ -350,7 +350,7 @@ else:
         col1.markdown(f"**Histograma de precios**")
         fig_hist = px.histogram(df_filtrado, x="Precio USD", nbins=50, color_discrete_sequence=['#1f77b4'])
         fig_hist.update_layout(xaxis_title="Precio (USD)", yaxis_title="Cantidad de ofertas")
-        col1.plotly_chart(fig_hist, width="stretch")
+        col1.plotly_chart(fig_hist, use_container_width=True)
 
     with col2:
         col2.markdown(f"**Curva de densidad de precios KDE**")
@@ -370,7 +370,7 @@ else:
                     yaxis_title="Densidad",
                     xaxis_title="Precio del Vehículo (USD)"
                 )
-                col2.plotly_chart(fig, width="stretch")
+                col2.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 col2.info("No fue posible generar la curva de densidad para esta seleccion de datos debido a limitaciones estadisticas.")
         else:
@@ -387,7 +387,7 @@ else:
         temp_scatter_valido,
         x='Cantidad',
         y='Precio Promedio',
-        width="stretch",
+        use_container_width=True,
         color="Key"
     )
 
@@ -456,7 +456,7 @@ else:
         datos_stat_prov_display.columns = ['Provincia', 'Precio US$ Promedio', 'Cantidad Veh en venta']
         st.dataframe(
             formato_tabla(datos_stat_prov_display, ['Precio US$ Promedio', 'Cantidad Veh en venta']),
-            width="stretch",
+            use_container_width=True,
             hide_index=True
         )
 
@@ -473,7 +473,7 @@ else:
     datos_stat_zona.columns = ['Zona', 'Precio US$ Promedio', 'Cantidad Veh en venta']
     st.dataframe(
         formato_tabla(datos_stat_zona, ['Precio US$ Promedio', 'Cantidad Veh en venta']),
-        width="stretch",
+        use_container_width=True,
         hide_index=True
     )
 
@@ -522,7 +522,7 @@ else:
             if not top_rural.empty:
                 st.dataframe(
                     formato_tabla(top_rural.head(10)[['Marca', 'Modelo', 'Version', 'Anio', 'Rural', 'Metropolitana']].rename(columns={'Version':'Versión', 'Anio':'Año'}), ['Rural', 'Metropolitana']),
-                    width="stretch",
+                    use_container_width=True,
                     hide_index=True
                 )
             else:
@@ -540,7 +540,7 @@ else:
             if not top_metro.empty:
                 st.dataframe(
                     formato_tabla(top_metro.head(10)[['Marca', 'Modelo', 'Version', 'Anio', 'Metropolitana', 'Rural']].rename(columns={'Version':'Versión', 'Anio':'Año'}), ['Metropolitana', 'Rural']),
-                    width="stretch",
+                    use_container_width=True,
                     hide_index=True
                 )
             else:
@@ -596,7 +596,7 @@ if not df_filtrado.empty:
             if not top_rural.empty:
                 st.dataframe(
                     formato_tabla(top_rural.head(5)[['Marca', 'Modelo', 'Versión' if 'Versión' in top_rural.columns else 'Version', 'Año' if 'Año' in top_rural.columns else 'Anio', 'Rural', 'Metropolitana']], ['Rural', 'Metropolitana']),
-                    width="stretch", hide_index=True
+                    use_container_width=True, hide_index=True
                 )
             else:
                 st.write("-")
@@ -605,7 +605,7 @@ if not df_filtrado.empty:
             if not top_metro.empty:
                 st.dataframe(
                     formato_tabla(top_metro.head(5)[['Marca', 'Modelo', 'Versión' if 'Versión' in top_metro.columns else 'Version', 'Año' if 'Año' in top_metro.columns else 'Anio', 'Metropolitana', 'Rural']], ['Metropolitana', 'Rural']),
-                    width="stretch", hide_index=True
+                    use_container_width=True, hide_index=True
                 )
             else:
                 st.write("-")
@@ -728,7 +728,7 @@ else:
         resumen_modelo.style.format({
             'Valor': lambda x: f"{x:,.2f}" if isinstance(x, (int, float, np.floating)) else x
         }),
-        width="stretch",
+        use_container_width=True,
         hide_index=True
     )
 
@@ -752,7 +752,7 @@ else:
             
             st.dataframe(
                 formato_tabla(mejores_ofertas, ['Precio US$']),
-                width="stretch",
+                use_container_width=True,
                 hide_index=True
             )
         else:
